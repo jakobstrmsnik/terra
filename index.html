@@ -40,7 +40,8 @@
   <div id="status" class="panel">
     Life on planet: <b id="pct">0%</b>
     <div id="bar"><div id="barFill"></div></div>
-    Trees: <b id="trees">0</b>
+    <div>Trees: <b id="trees">0</b></div>
+    <div>Weather: <b id="weather">Clear</b></div>
   </div>
   <div id="cross"></div>
   <div id="msg" class="panel"></div>
@@ -50,7 +51,7 @@
 <div id="menu">
   <div class="card">
     <h1>TERRA - officialy my first game!!</h1>
-    <p>This planet is dead as a rock. Plant trees until life covers the whole world.</p>
+    <p>This planet is as dead as a rock. Plant trees until life covers the whole world.</p>
     <p><b>WASD</b> walk &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> jump<br>
        <b>Mouse</b> look &nbsp; <b>Click</b> use tool &nbsp; <b>1-5</b> choose tool<br>
        <b>Esc</b> pause</p>
@@ -69,7 +70,7 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const $ = id => document.getElementById(id);
 
-/* ---------- simple value noise ---------- */
+/* ---------- simple value noise ------- */
 const OFFSET = Math.random() * 1000;
 function hash(x, y) {
   const n = Math.sin(x * 127.1 + y * 311.7 + OFFSET) * 43758.5453;
@@ -88,7 +89,7 @@ function fbm(x, y) {
   return sum;
 }
 
-/* ---------- height map -------- */
+/* ---------- height map ------- */
 const heights = new Float32Array(ROW * ROW);
 for (let iz = 0; iz <= RES; iz++) {
   for (let ix = 0; ix <= RES; ix++) {
@@ -104,7 +105,7 @@ function heightAt(x, z) {
   return lerp(lerp(heights[i], heights[i + 1], tx), lerp(heights[i + ROW], heights[i + ROW + 1], tx), tz);
 }
 
-/* ------ sceneri --------- */
+/* ---------- scene ---------- */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 document.body.insertBefore(renderer.domElement, document.body.firstChild);
@@ -121,7 +122,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.9);
 scene.add(sun);
 
-/* ---------- terrain -------- */
+/* ---------- terrain mesh ---------- */
 const geo = new THREE.BufferGeometry();
 const pos = new Float32Array(ROW * ROW * 3), col = new Float32Array(ROW * ROW * 3);
 for (let iz = 0; iz <= RES; iz++) for (let ix = 0; ix <= RES; ix++) {
@@ -145,7 +146,7 @@ const water = new THREE.Mesh(
 );
 scene.add(water);
 
-/* ----- colours: dead rock turns green where life has spread ----- */
+/* ---------- colours: dead rock turns green where life has spread -------- */
 const life = new Float32Array(ROW * ROW);
 const lifeTarget = new Float32Array(ROW * ROW);
 let landCells = 1, greenCells = 0;
@@ -185,7 +186,7 @@ function lifeTick() {
   for (let i = 0; i < life.length; i++) life[i] += (lifeTarget[i] - life[i]) * 0.3;
 }
 
-/* ------ trees ------- */
+/* ---------- trees -------- */
 const trees = [];
 const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.3, 6).translate(0, 0.65, 0);
 const leafGeo = new THREE.ConeGeometry(1, 3, 8).translate(0, 2.8, 0);
@@ -206,7 +207,7 @@ function removeTree(t) {
   trees.splice(trees.indexOf(t), 1);
 }
 
-/* ------ rocks -------- */
+/* ---------- rocks ------ */
 const rocks = [];
 const rockGeo = new THREE.IcosahedronGeometry(1, 0);
 const rockMat = new THREE.MeshLambertMaterial({ color: 0x777070 });
@@ -222,7 +223,7 @@ for (let tries = 0; rocks.length < 80 && tries < 2000; tries++) {
   rocks.push({ x, z, mesh });
 }
 
-/* ---------- condenseers ---------- */
+/* ---------- condenseers-------- */
 const condensers = [];
 const concMat = new THREE.MeshLambertMaterial({ color: 0x8a8f99 });
 const orbMat = new THREE.MeshBasicMaterial({ color: 0x7fe3ff });
@@ -238,7 +239,102 @@ function addCondenser(x, z) {
   condensers.push({ x, z, age: 0, g });
 }
 
-/* ------- player ------- */
+/* ---------- weather ------ */
+const WEATHER = {
+  clear:  { name: "Clear",  clouds: 0.0, rain: 0.0, dark: 0.0 },
+  cloudy: { name: "Cloudy", clouds: 0.6, rain: 0.0, dark: 0.3 },
+  rain:   { name: "Rain",   clouds: 1.0, rain: 1.0, dark: 0.5 }
+};
+const weather = { type: "clear", timer: 40, clouds: 0, rain: 0, dark: 0, told: false };
+let lifePct = 0;
+
+const clouds = [];
+const cloudGeo = new THREE.SphereGeometry(1, 8, 6);
+const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false });
+for (let i = 0; i < 12; i++) {
+  const g = new THREE.Group();
+  const puffs = 3 + Math.floor(Math.random() * 3);
+  for (let k = 0; k < puffs; k++) {
+    const m = new THREE.Mesh(cloudGeo, cloudMat);
+    m.position.set((k - puffs / 2) * 6, Math.random() * 2, (Math.random() - 0.5) * 6);
+    m.scale.set(7 + Math.random() * 4, 2.5 + Math.random() * 2, 5 + Math.random() * 3);
+    g.add(m);
+  }
+  g.position.set((Math.random() - 0.5) * 360, 70 + Math.random() * 20, (Math.random() - 0.5) * 360);
+  g.userData.speed = 2 + Math.random() * 3;
+  scene.add(g);
+  clouds.push(g);
+}
+
+// rain is a bnch of short lines that follow the camera arund
+const RAIN_COUNT = 800;
+const rainPos = new Float32Array(RAIN_COUNT * 6);
+const rainOffsets = new Float32Array(RAIN_COUNT * 3);
+for (let i = 0; i < RAIN_COUNT; i++) {
+  rainOffsets[i * 3] = (Math.random() - 0.5) * 60;
+  rainOffsets[i * 3 + 1] = Math.random() * 30 - 5;
+  rainOffsets[i * 3 + 2] = (Math.random() - 0.5) * 60;
+}
+const rainGeo = new THREE.BufferGeometry();
+rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3));
+const rainLines = new THREE.LineSegments(
+  rainGeo,
+  new THREE.LineBasicMaterial({ color: 0xaec6e8, transparent: true, opacity: 0.5 })
+);
+rainLines.frustumCulled = false;
+rainLines.visible = false;
+scene.add(rainLines);
+
+function pickWeather() {
+  // the greener the planet, the more often it rains
+  const r = Math.random();
+  if (r < 0.1 + 0.4 * lifePct) return "rain";
+  return r < 0.55 ? "cloudy" : "clear";
+}
+
+function updateWeather(dt) {
+  weather.timer -= dt;
+  if (weather.timer <= 0) {
+    weather.type = pickWeather();
+    weather.timer = 40 + Math.random() * 40;
+    if (weather.type === "rain" && !weather.told) {
+      weather.told = true;
+      message("Rain makes your trees grow faster");
+    }
+  }
+
+  // ease towards the target values so changes are gradual
+  const w = WEATHER[weather.type], s = Math.min(1, dt * 0.5);
+  weather.clouds += (w.clouds - weather.clouds) * s;
+  weather.rain += (w.rain - weather.rain) * s;
+  weather.dark += (w.dark - weather.dark) * s;
+
+  const shown = Math.min(clouds.length, 3 + Math.round(9 * weather.clouds));
+  clouds.forEach((c, i) => {
+    c.visible = i < shown;
+    c.position.x += c.userData.speed * dt;
+    if (c.position.x > 200) c.position.x = -200;
+  });
+
+  const raining = weather.rain > 0.05;
+  rainLines.visible = raining;
+  if (raining) {
+    const n = Math.floor(RAIN_COUNT * weather.rain), cp = camera.position;
+    for (let i = 0; i < n; i++) {
+      rainOffsets[i * 3 + 1] -= 35 * dt;
+      if (rainOffsets[i * 3 + 1] < -5) rainOffsets[i * 3 + 1] += 30;
+      const x = cp.x + rainOffsets[i * 3];
+      const y = cp.y + rainOffsets[i * 3 + 1];
+      const z = cp.z + rainOffsets[i * 3 + 2];
+      rainPos.set([x, y, z, x + 0.05, y + 0.8, z + 0.03], i * 6);
+    }
+    rainGeo.setDrawRange(0, n * 2);
+    rainGeo.attributes.position.needsUpdate = true;
+  }
+  $("weather").textContent = w.name;
+}
+
+/* ------ player --------- */
 const P = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: 0, onGround: true };
 (function spawn() {
   for (let r = 0; r < 80; r += 2) for (let a = 0; a < 6.28; a += 0.4) {
@@ -253,7 +349,7 @@ for (let n = 0, tries = 0; n < 8 && tries < 100; tries++) {
   if (heightAt(x, z) > 1) { addTree(x, z, 20); n++; }
 }
 
-/* ------- tools ------- */
+/* -------- tools ------- */
 const TOOLS = ["Gather", "Plant", "Dig", "Raise", "Condenser"];
 const HINTS = [
   "Walk up to a tree or rock and click to gather",
@@ -284,7 +380,7 @@ function message(text) {
   msgTimer = setTimeout(() => el.classList.remove("show"), 2000);
 }
 
-/* finsd the ground point under the crossair */
+/* find the ground point under the crosair */
 const dir = new THREE.Vector3();
 function terrainHit(maxDist) {
   camera.getWorldDirection(dir);
@@ -297,7 +393,7 @@ function terrainHit(maxDist) {
   return null;
 }
 
-/* nearest tree or rock in fronmt of the player */
+/* nearest tree or rock in fron of the player */
 function findTarget() {
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
   let best = null, bestDist = 5;
@@ -364,7 +460,7 @@ function useTool(dt) {
   }
 }
 
-/* ---------- player movement ---------- */
+/* --------- player movement ---------*/
 function updatePlayer(dt) {
   const speed = keys.ShiftLeft ? 10 : 6;
   const mx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
@@ -386,7 +482,7 @@ function updatePlayer(dt) {
   camera.rotation.set(P.pitch, P.yaw, 0);
 }
 
-/* ---------- day anrd night ---------- */
+/* ---------- day andd night --------- */
 let dayT = 0.1;
 const dayCol = new THREE.Color(0x8ecdf0), nightCol = new THREE.Color(0x070b1c);
 function updateDay(dt) {
@@ -394,14 +490,14 @@ function updateDay(dt) {
   const a = dayT * Math.PI * 2;
   const height = Math.sin(a);                      // sun height: > 0 is day
   const day = clamp(height * 3 + 0.5, 0, 1);
-  skyColor.copy(nightCol).lerp(dayCol, day);
+  skyColor.copy(nightCol).lerp(dayCol, day).multiplyScalar(1 - weather.dark);
   scene.fog.color.copy(skyColor);
   sun.position.set(Math.cos(a) * 100, Math.sin(a) * 100 + 5, 30).add(camera.position);
-  sun.intensity = 0.9 * day;
+  sun.intensity = 0.9 * day * (1 - weather.dark);
   hemi.intensity = 0.2 + 0.5 * day;
 }
 
-/* ------- HUD --------- */
+/* --------- HUD ------- */
 let won = false;
 function updateHud() {
   $("rWood").textContent = inv.wood;
@@ -409,6 +505,7 @@ function updateHud() {
   $("rDirt").textContent = inv.dirt;
   $("trees").textContent = trees.length;
   const pct = clamp(greenCells / landCells / 0.5, 0, 1);
+  lifePct = pct;
   $("pct").textContent = Math.round(pct * 100) + "%";
   $("barFill").style.width = pct * 100 + "%";
   if (pct >= 1 && !won) {
@@ -418,7 +515,7 @@ function updateHud() {
   }
 }
 
-/* -------- input ------ */
+/* ---------- input ------ */
 addEventListener("keydown", e => {
   keys[e.code] = true;
   if (!locked) return;
@@ -449,7 +546,7 @@ document.addEventListener("pointerlockchange", () => {
   if (!locked) mouseDown = false;
 });
 
-/* -- main loop --- */
+/* ---------- main loop ---------- */
 setTool(0);
 let colorTimer = 99, last = performance.now(), orbit = 0;
 function frame(now) {
@@ -457,8 +554,8 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
-  trees.forEach(t => {                                  // trees grow over timee
-    t.age += dt;
+  trees.forEach(t => {                                  // trees grow over time
+    t.age += dt * (1 + weather.rain * 0.8);              // rain speeds up growth
     const s = Math.min(1, 0.15 + t.age / 20);
     t.g.scale.set(s, s, s);
   });
@@ -469,7 +566,7 @@ function frame(now) {
     useTool(dt);
     clicked = false;
     updateHud();
-  } else {                                              // slow orrbit behind the menu
+  } else {                                              // slow orbit behind the menu
     orbit += dt * 0.05;
     camera.position.set(Math.cos(orbit) * 140, 60, Math.sin(orbit) * 140);
     camera.lookAt(0, 0, 0);
@@ -478,6 +575,7 @@ function frame(now) {
   colorTimer += dt;
   if (colorTimer > 0.4) { colorTimer = 0; lifeTick(); updateColors(); }
 
+  updateWeather(dt);
   updateDay(dt);
   renderer.render(scene, camera);
 }
