@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Terra</title>
+<title>Terra (simple)</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #120e0c; color: #f3ece2;
     font-family: system-ui, sans-serif; user-select: none; }
@@ -20,6 +20,8 @@
   #tools { bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
   .tool { padding: 6px 10px; border-radius: 6px; border: 2px solid transparent; font-size: 13px; text-align: center; }
   .tool.on { border-color: #8fd694; }
+  #mini { position: absolute; left: 12px; bottom: 12px; border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3); background: #2b6fd6; }
   #hud { display: none; }
   #menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     background: rgba(14, 10, 8, 0.6); }
@@ -42,15 +44,17 @@
     <div id="bar"><div id="barFill"></div></div>
     <div>Trees: <b id="trees">0</b></div>
     <div>Weather: <b id="weather">Clear</b></div>
+    <div>Animals: <b id="animals">0</b></div>
   </div>
   <div id="cross"></div>
   <div id="msg" class="panel"></div>
   <div id="tools" class="panel"></div>
+  <canvas id="mini" width="130" height="130"></canvas>
 </div>
 
 <div id="menu">
   <div class="card">
-    <h1>TERRA - officialy my first game!!</h1>
+    <h1>TERRA - officialy my first game!! -/h1>
     <p>This planet is as dead as a rock. Plant trees until life covers the whole world.</p>
     <p><b>WASD</b> walk &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> jump<br>
        <b>Mouse</b> look &nbsp; <b>Click</b> use tool &nbsp; <b>1-5</b> choose tool<br>
@@ -64,7 +68,7 @@
 (() => {
 "use strict";
 
-/* ---------- constants and helpers ---------- */
+/* --------- constants and helpers ------- */
 const WORLD = 200, RES = 100, HALF = WORLD / 2, CELL = WORLD / RES, ROW = RES + 1;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -105,7 +109,7 @@ function heightAt(x, z) {
   return lerp(lerp(heights[i], heights[i + 1], tx), lerp(heights[i + ROW], heights[i + ROW + 1], tx), tz);
 }
 
-/* ---------- scene ---------- */
+/* ---------- scene --------- */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 document.body.insertBefore(renderer.domElement, document.body.firstChild);
@@ -122,7 +126,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.9);
 scene.add(sun);
 
-/* ---------- terrain mesh ---------- */
+/* ------- terrain mesh ---------- */
 const geo = new THREE.BufferGeometry();
 const pos = new Float32Array(ROW * ROW * 3), col = new Float32Array(ROW * ROW * 3);
 for (let iz = 0; iz <= RES; iz++) for (let ix = 0; ix <= RES; ix++) {
@@ -144,9 +148,9 @@ const water = new THREE.Mesh(
   new THREE.PlaneGeometry(WORLD * 3, WORLD * 3).rotateX(-Math.PI / 2),
   new THREE.MeshLambertMaterial({ color: 0x2b6fd6, transparent: true, opacity: 0.8 })
 );
-scene.add(water);
+scene.add(water)
 
-/* ---------- colours: dead rock turns green where life has spread -------- */
+/* ---------- colours: dead rok turns green where life has spread ------ */
 const life = new Float32Array(ROW * ROW);
 const lifeTarget = new Float32Array(ROW * ROW);
 let landCells = 1, greenCells = 0;
@@ -186,7 +190,7 @@ function lifeTick() {
   for (let i = 0; i < life.length; i++) life[i] += (lifeTarget[i] - life[i]) * 0.3;
 }
 
-/* ---------- trees -------- */
+/* ---------- tres ---------- */
 const trees = [];
 const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.3, 6).translate(0, 0.65, 0);
 const leafGeo = new THREE.ConeGeometry(1, 3, 8).translate(0, 2.8, 0);
@@ -207,7 +211,7 @@ function removeTree(t) {
   trees.splice(trees.indexOf(t), 1);
 }
 
-/* ---------- rocks ------ */
+/* ---------- rocks ------- */
 const rocks = [];
 const rockGeo = new THREE.IcosahedronGeometry(1, 0);
 const rockMat = new THREE.MeshLambertMaterial({ color: 0x777070 });
@@ -223,7 +227,7 @@ for (let tries = 0; rocks.length < 80 && tries < 2000; tries++) {
   rocks.push({ x, z, mesh });
 }
 
-/* ---------- condenseers-------- */
+/* ---------- condesers ------- */
 const condensers = [];
 const concMat = new THREE.MeshLambertMaterial({ color: 0x8a8f99 });
 const orbMat = new THREE.MeshBasicMaterial({ color: 0x7fe3ff });
@@ -239,7 +243,7 @@ function addCondenser(x, z) {
   condensers.push({ x, z, age: 0, g });
 }
 
-/* ---------- weather ------ */
+/* ---------- weather -------- */
 const WEATHER = {
   clear:  { name: "Clear",  clouds: 0.0, rain: 0.0, dark: 0.0 },
   cloudy: { name: "Cloudy", clouds: 0.6, rain: 0.0, dark: 0.3 },
@@ -266,7 +270,7 @@ for (let i = 0; i < 12; i++) {
   clouds.push(g);
 }
 
-// rain is a bnch of short lines that follow the camera arund
+// rain is a bunch of short lines that fllow the camera around
 const RAIN_COUNT = 800;
 const rainPos = new Float32Array(RAIN_COUNT * 6);
 const rainOffsets = new Float32Array(RAIN_COUNT * 3);
@@ -286,7 +290,7 @@ rainLines.visible = false;
 scene.add(rainLines);
 
 function pickWeather() {
-  // the greener the planet, the more often it rains
+  // the greener the planet, the more often t rains
   const r = Math.random();
   if (r < 0.1 + 0.4 * lifePct) return "rain";
   return r < 0.55 ? "cloudy" : "clear";
@@ -303,7 +307,7 @@ function updateWeather(dt) {
     }
   }
 
-  // ease towards the target values so changes are gradual
+  // ease towards the target values so chages are gradual
   const w = WEATHER[weather.type], s = Math.min(1, dt * 0.5);
   weather.clouds += (w.clouds - weather.clouds) * s;
   weather.rain += (w.rain - weather.rain) * s;
@@ -334,7 +338,88 @@ function updateWeather(dt) {
   $("weather").textContent = w.name;
 }
 
-/* ------ player --------- */
+/* ---------- animals ------- */
+const animals = [];
+const MAX_ANIMALS = 25;
+let animalTimer = 0;
+const bodyGeo = new THREE.BoxGeometry(0.7, 0.6, 1.3);
+const headGeo = new THREE.BoxGeometry(0.3, 0.3, 0.5);
+const legGeo = new THREE.BoxGeometry(0.14, 0.7, 0.14);
+
+function lifeAt(x, z) {
+  const ix = clamp(Math.round((x + HALF) / CELL), 0, RES);
+  const iz = clamp(Math.round((z + HALF) / CELL), 0, RES);
+  return life[iz * ROW + ix];
+}
+
+function makeAnimal(x, z) {
+  const mat = new THREE.MeshLambertMaterial({
+    color: new THREE.Color().setHSL(0.07 + Math.random() * 0.05, 0.4, 0.3 + Math.random() * 0.15)
+  });
+  const g = new THREE.Group();
+  const part = (geometry, px, py, pz) => {
+    const m = new THREE.Mesh(geometry, mat);
+    m.position.set(px, py, pz);
+    g.add(m);
+    return m;
+  };
+  part(bodyGeo, 0, 0.95, 0);
+  part(headGeo, 0, 1.45, 0.8);
+  const legs = [
+    part(legGeo, -0.25, 0.35, -0.5), part(legGeo, 0.25, 0.35, -0.5),
+    part(legGeo, -0.25, 0.35, 0.5), part(legGeo, 0.25, 0.35, 0.5)
+  ];
+  g.position.set(x, heightAt(x, z), z);
+  scene.add(g);
+  animals.push({ g, legs, x, z, heading: Math.random() * 6.28, turnIn: 2, phase: Math.random() * 6 });
+}
+
+function spawnAnimal() {
+  // try a few random spots round the player until one is green, dry and flat enough
+  for (let tries = 0; tries < 10; tries++) {
+    const a = Math.random() * 6.28, d = 15 + Math.random() * 40;
+    const x = P.x + Math.cos(a) * d, z = P.z + Math.sin(a) * d;
+    if (Math.abs(x) > HALF - 5 || Math.abs(z) > HALF - 5) continue;
+    if (heightAt(x, z) < 1.2 || lifeAt(x, z) < 0.6) continue;
+    makeAnimal(x, z);
+    return;
+  }
+}
+
+function updateAnimals(dt, time) {
+  animalTimer -= dt;
+  const cap = Math.min(MAX_ANIMALS, Math.floor(lifePct * 40));
+  if (animalTimer <= 0) {
+    animalTimer = 3;
+    if (animals.length < cap) spawnAnimal();
+  }
+  for (let i = animals.length - 1; i >= 0; i--) {
+    const an = animals[i];
+    // animals disappear if their grass dies or they wander too far away
+    if (lifeAt(an.x, an.z) < 0.25 || Math.hypot(an.x - P.x, an.z - P.z) > 120) {
+      scene.remove(an.g);
+      animals.splice(i, 1);
+      continue;
+    }
+    an.turnIn -= dt;
+    if (an.turnIn <= 0) {
+      an.heading += (Math.random() - 0.5) * 2.4;
+      an.turnIn = 2 + Math.random() * 4;
+    }
+    const nx = an.x + Math.sin(an.heading) * 0.9 * dt;
+    const nz = an.z + Math.cos(an.heading) * 0.9 * dt;
+    if (heightAt(nx, nz) > 1 && lifeAt(nx, nz) > 0.3) { an.x = nx; an.z = nz; }
+    else an.heading += 2.2;                                // turn around at the edge of the grass
+    an.g.position.set(an.x, heightAt(an.x, an.z), an.z);
+    an.g.rotation.y = an.heading;
+    const swing = Math.sin(time * 5 + an.phase) * 0.45;    // walking animation
+    an.legs[0].rotation.x = swing; an.legs[3].rotation.x = swing;
+    an.legs[1].rotation.x = -swing; an.legs[2].rotation.x = -swing;
+  }
+  $("animals").textContent = animals.length;
+}
+
+/* ---------- player -------- */
 const P = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: 0, onGround: true };
 (function spawn() {
   for (let r = 0; r < 80; r += 2) for (let a = 0; a < 6.28; a += 0.4) {
@@ -348,8 +433,7 @@ for (let n = 0, tries = 0; n < 8 && tries < 100; tries++) {
   const x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
   if (heightAt(x, z) > 1) { addTree(x, z, 20); n++; }
 }
-
-/* -------- tools ------- */
+/* ---------- tools --------- */
 const TOOLS = ["Gather", "Plant", "Dig", "Raise", "Condenser"];
 const HINTS = [
   "Walk up to a tree or rock and click to gather",
@@ -380,7 +464,7 @@ function message(text) {
   msgTimer = setTimeout(() => el.classList.remove("show"), 2000);
 }
 
-/* find the ground point under the crosair */
+/* find the ground point under thcrosshair */
 const dir = new THREE.Vector3();
 function terrainHit(maxDist) {
   camera.getWorldDirection(dir);
@@ -393,7 +477,7 @@ function terrainHit(maxDist) {
   return null;
 }
 
-/* nearest tree or rock in fron of the player */
+/* nearest tree or rock in front of theplayer */
 function findTarget() {
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
   let best = null, bestDist = 5;
@@ -407,7 +491,7 @@ function findTarget() {
   return best;
 }
 
-/* raise / lower the terrain with a soft round brush */
+/* raise or lower the terrain wit a soft round brush */
 function brush(cx, cz, radius, amount) {
   for (let iz = 0; iz <= RES; iz++) for (let ix = 0; ix <= RES; ix++) {
     const x = -HALF + ix * CELL, z = -HALF + iz * CELL, d = Math.hypot(x - cx, z - cz);
@@ -460,7 +544,7 @@ function useTool(dt) {
   }
 }
 
-/* --------- player movement ---------*/
+/* ---------- player movement ------- */
 function updatePlayer(dt) {
   const speed = keys.ShiftLeft ? 10 : 6;
   const mx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
@@ -482,7 +566,7 @@ function updatePlayer(dt) {
   camera.rotation.set(P.pitch, P.yaw, 0);
 }
 
-/* ---------- day andd night --------- */
+/* ---------- day  night -------- */
 let dayT = 0.1;
 const dayCol = new THREE.Color(0x8ecdf0), nightCol = new THREE.Color(0x070b1c);
 function updateDay(dt) {
@@ -497,7 +581,41 @@ function updateDay(dt) {
   hemi.intensity = 0.2 + 0.5 * day;
 }
 
-/* --------- HUD ------- */
+/* ---------- minimap ------- */
+const mini = $("mini"), mctx = mini.getContext("2d");
+const miniTerrain = document.createElement("canvas");
+miniTerrain.width = miniTerrain.height = ROW;
+const mtctx = miniTerrain.getContext("2d");
+const miniImg = mtctx.createImageData(ROW, ROW);
+
+function updateMinimapTerrain() {                       // redraw the land colors (called a few times per second)
+  for (let i = 0; i < ROW * ROW; i++) {
+    const water = heights[i] < 0.5;
+    miniImg.data[i * 4]     = water ? 43  : col[i * 3] * 255;
+    miniImg.data[i * 4 + 1] = water ? 111 : col[i * 3 + 1] * 255;
+    miniImg.data[i * 4 + 2] = water ? 214 : col[i * 3 + 2] * 255;
+    miniImg.data[i * 4 + 3] = 255;
+  }
+  mtctx.putImageData(miniImg, 0, 0);
+}
+
+function drawMinimap() {                                // terrain + player dotwith a view direction
+  const w = mini.width, h = mini.height;
+  mctx.drawImage(miniTerrain, 0, 0, w, h);
+  const px = (P.x + HALF) / WORLD * w, pz = (P.z + HALF) / WORLD * h;
+  mctx.strokeStyle = "#fff";
+  mctx.lineWidth = 2;
+  mctx.beginPath();
+  mctx.moveTo(px, pz);
+  mctx.lineTo(px - Math.sin(P.yaw) * 10, pz - Math.cos(P.yaw) * 10);
+  mctx.stroke();
+  mctx.fillStyle = "#ff4d4d";
+  mctx.beginPath();
+  mctx.arc(px, pz, 3.5, 0, Math.PI * 2);
+  mctx.fill();
+}
+
+/* ---------- HUD ------- */
 let won = false;
 function updateHud() {
   $("rWood").textContent = inv.wood;
@@ -515,7 +633,7 @@ function updateHud() {
   }
 }
 
-/* ---------- input ------ */
+/* ---------- input -------- */
 addEventListener("keydown", e => {
   keys[e.code] = true;
   if (!locked) return;
@@ -546,7 +664,7 @@ document.addEventListener("pointerlockchange", () => {
   if (!locked) mouseDown = false;
 });
 
-/* ---------- main loop ---------- */
+/* ---------- main loop ------- */
 setTool(0);
 let colorTimer = 99, last = performance.now(), orbit = 0;
 function frame(now) {
@@ -566,6 +684,7 @@ function frame(now) {
     useTool(dt);
     clicked = false;
     updateHud();
+    drawMinimap();
   } else {                                              // slow orbit behind the menu
     orbit += dt * 0.05;
     camera.position.set(Math.cos(orbit) * 140, 60, Math.sin(orbit) * 140);
@@ -573,13 +692,14 @@ function frame(now) {
   }
 
   colorTimer += dt;
-  if (colorTimer > 0.4) { colorTimer = 0; lifeTick(); updateColors(); }
+  if (colorTimer > 0.4) { colorTimer = 0; lifeTick(); updateColors(); updateMinimapTerrain(); }
 
   updateWeather(dt);
+  updateAnimals(dt, now / 1000);
   updateDay(dt);
   renderer.render(scene, camera);
 }
-lifeTick(); updateColors();
+lifeTick(); updateColors(); updateMinimapTerrain();
 requestAnimationFrame(frame);
 })();
 </script>
