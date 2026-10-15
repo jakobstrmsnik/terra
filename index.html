@@ -44,7 +44,8 @@
     <div id="bar"><div id="barFill"></div></div>
     <div>Trees: <b id="trees">0</b></div>
     <div>Weather: <b id="weather">Clear</b></div>
-    <div>Time: <b id="time">0:00</b></div>
+    <div>Time: <b id="time">0:00.00</b></div>
+    <div>Best: <b id="best">--</b></div>
     <div>Animals: <b id="animals">0</b></div>
   </div>
   <div id="cross"></div>
@@ -618,10 +619,15 @@ function drawMinimap() {                                // terrain + player dot 
 }
 
 /* ---------- HUD ------- */
-let won = false, playTime = 0;
+let won = false, playTime = 0, bestTime = null;
+try { bestTime = parseFloat(localStorage.getItem("terraBest")) || null; } catch (e) {}
+function fmt(t) {                                       // seconds -> m:ss.cc
+  const m = Math.floor(t / 60), s = Math.floor(t % 60), c = Math.floor((t * 100) % 100);
+  return m + ":" + (s < 10 ? "0" : "") + s + "." + (c < 10 ? "0" : "") + c;
+}
 function updateHud() {
-  const m = Math.floor(playTime / 60), s = Math.floor(playTime % 60);
-  $("time").textContent = m + ":" + (s < 10 ? "0" : "") + s;
+  $("time").textContent = fmt(playTime);
+  $("best").textContent = bestTime ? fmt(bestTime) : "--";
   $("rWood").textContent = inv.wood;
   $("rStone").textContent = inv.stone;
   $("rDirt").textContent = inv.dirt;
@@ -632,8 +638,15 @@ function updateHud() {
   $("barFill").style.width = pct * 100 + "%";
   if (pct >= 1 && !won) {
     won = true;
+    let msg = "Planet terraformed in " + fmt(playTime) + "!";
+    if (!bestTime || playTime < bestTime) {
+      bestTime = playTime;
+      msg += "\nNew best time!";
+      try { localStorage.setItem("terraBest", bestTime); } catch (e) {}
+    } else msg += "\nBest time: " + fmt(bestTime);
+    $("best").textContent = fmt(bestTime);
     document.exitPointerLock();
-    alert("Planet terraformed! Life now covers the whole world.");
+    alert(msg);
   }
 }
 
@@ -684,7 +697,7 @@ function frame(now) {
   condensers.forEach(c => { c.age += dt; });
 
   if (locked) {
-    playTime += dt;
+    if (!won) playTime += dt;
     updatePlayer(dt);
     useTool(dt);
     clicked = false;
@@ -710,3 +723,4 @@ requestAnimationFrame(frame);
 </script>
 </body>
 </html>
+
