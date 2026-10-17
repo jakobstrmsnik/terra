@@ -1,726 +1,376 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Terra - officialy my first terra game!</title>
+<title>Terra</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #120e0c; color: #f3ece2;
-    font-family: system-ui, sans-serif; user-select: none; }
-  canvas { display: block; }
-  .panel { position: absolute; background: rgba(20, 16, 14, 0.7); border-radius: 8px; padding: 10px 14px; }
-  #res { top: 12px; left: 12px; display: flex; gap: 16px; }
-  #status { top: 12px; right: 12px; width: 180px; }
-  #bar { height: 8px; background: #444; border-radius: 4px; margin: 6px 0; overflow: hidden; }
-  #barFill { height: 100%; width: 0; background: #8fd694; }
-  #cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px;
-    border-radius: 50%; background: #fff; }
-  #msg { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); opacity: 0; transition: opacity .3s; }
-  #msg.show { opacity: 1; }
-  #tools { bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
-  .tool { padding: 6px 10px; border-radius: 6px; border: 2px solid transparent; font-size: 13px; text-align: center; }
-  .tool.on { border-color: #8fd694; }
-  #mini { position: absolute; left: 12px; bottom: 12px; border-radius: 8px;
-    border: 2px solid rgba(255, 255, 255, 0.3); background: #2b6fd6; }
-  #hud { display: none; }
-  #menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: rgba(14, 10, 8, 0.6); }
-  .card { width: 440px; max-width: 90vw; padding: 28px; background: #1e1713; border-radius: 12px; }
-  .card h1 { margin: 0 0 8px; color: #d8895a; font-size: 44px; }
-  button { font: inherit; font-size: 16px; padding: 10px 22px; border: 0; border-radius: 8px;
-    background: #8fd694; color: #14200f; cursor: pointer; font-weight: bold; }
+body{
+  margin:0;
+  overflow:hidden;
+  background:black;
+  color:white;
+  font-family:Arial;
+}
+#info{ position:absolute; top:10px;left:10px;background:rgba(0,0,0,0.6);padding:10px;display:none }
+#cross{
+  position:absolute;left:50%;top:50%;
+  width:6px;height:6px;margin:-3px 0 0 -3px;
+  background:white;border-radius:50%;
+  display:none;
+}
+#message{ position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:8px 14px;display:none;}
+#menu{position:absolute;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.7);text-align:center;padding-top:120px;box-sizing:border-box}
+#menu h1{font-size:50px;margin-bottom:10px}
+button{font-size:18px;padding:10px 25px;cursor:pointer}
 </style>
 </head>
 <body>
 
-<div id="hud">
-  <div id="res" class="panel">
-    <div>Wood <b id="rWood">0</b></div>
-    <div>Stone <b id="rStone">0</b></div>
-    <div>Dirt <b id="rDirt">0</b></div>
-  </div>
-  <div id="status" class="panel">
-    Life on planet: <b id="pct">0%</b>
-    <div id="bar"><div id="barFill"></div></div>
-    <div>Trees: <b id="trees">0</b></div>
-    <div>Weather: <b id="weather">Clear</b></div>
-    <div>Time: <b id="time">0:00.00</b></div>
-    <div>Best: <b id="best">--</b></div>
-    <div>Animals: <b id="animals">0</b></div>
-  </div>
-  <div id="cross"></div>
-  <div id="msg" class="panel"></div>
-  <div id="tools" class="panel"></div>
-  <canvas id="mini" width="130" height="130"></canvas>
+<div id="info">
+Wood: <span id="wood">0</span><br>
+Trees planted: <span id="planted">0</span><br>
+Green: <span id="percent">0</span>%<br>
+Time: <span id="time">0:00.00</span><br>
+Best: <span id="best">--</span>
 </div>
 
+<div id="cross"></div>
+<div id="message"></div>
+
 <div id="menu">
-  <div class="card">
-    <h1>TERRA</h1>
-    <p>This planet is as dead as a rock. Plant trees until life covers the whole world.</p>
-    <p><b>WASD</b> walk &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> jump<br>
-       <b>Mouse</b> look &nbsp; <b>Click</b> use tool &nbsp; <b>1-5</b> choose tool<br>
-       <b>Esc</b> pause</p>
-    <button id="play">Click to play</button>
-  </div>
+<h1>TERRA</h1>
+<p id="menuText">The planet is as dead as a rock. Plant trees until half of it is green!</p>
+<p>
+WASD = walk, Shift = run, Space = jump<br>
+E = chop a tree (you get 1 wood)<br>
+Left click = plant a tree (costs 1 wood)<br>
+Esc = pause
+</p>
+<button id="playButton" onclick="pressPlay()">Play</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-(() => {
-"use strict";
+// I hope its okay, i spent a lot of time doing this. Have a nice day code reviewer! :D
+// var size = 50; // i had it smaller first but the map felt too crowded
+// changed from 100% green planet to 50%, the game is a bit quicker now
 
-/* ---------- constnts and helpers ------- */
-const WORLD = 200, RES = 100, HALF = WORLD / 2, CELL = WORLD / RES, ROW = RES + 1;
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const lerp = (a, b, t) => a + (b - a) * t;
-const $ = id => document.getElementById(id);
+var size = 100
+var steps = 50;
+var greenRadius = 18
 
-/* ---------- simple value noise -------- */
-const OFFSET = Math.random() * 1000;
-function hash(x, y) {
-  const n = Math.sin(x * 127.1 + y * 311.7 + OFFSET) * 43758.5453;
-  return n - Math.floor(n);
-}
-function noise(x, y) {
-  const xi = Math.floor(x), yi = Math.floor(y);
-  let xf = x - xi, yf = y - yi;
-  xf = xf * xf * (3 - 2 * xf); yf = yf * yf * (3 - 2 * yf);
-  return lerp(lerp(hash(xi, yi), hash(xi + 1, yi), xf),
-              lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), xf), yf);
-}
-function fbm(x, y) {
-  let sum = 0, amp = 0.5;
-  for (let i = 0; i < 4; i++) { sum += amp * noise(x, y); x *= 2; y *= 2; amp *= 0.5; }
-  return sum;
-}
+wood = 5;
+plantedTrees = 0
+percentGreen = 0;
+var timegone = 0
+var best = 0
+var arePlaying = false
+var didWin = false
 
-/* ---------- height map ------- */
-const heights = new Float32Array(ROW * ROW);
-for (let iz = 0; iz <= RES; iz++) {
-  for (let ix = 0; ix <= RES; ix++) {
-    const x = -HALF + ix * CELL, z = -HALF + iz * CELL;
-    const d = Math.hypot(x, z) / HALF;
-    const mask = 1 - clamp((d - 0.5) / 0.45, 0, 1);
-    heights[iz * ROW + ix] = clamp((fbm(x * 0.02, z * 0.02) - 0.4) * 40 * mask - (1 - mask) * 6, -8, 30);
-  }
-}
-function heightAt(x, z) {
-  const fx = clamp((x + HALF) / CELL, 0, RES - 0.001), fz = clamp((z + HALF) / CELL, 0, RES - 0.001);
-  const ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz, i = iz * ROW + ix;
-  return lerp(lerp(heights[i], heights[i + 1], tx), lerp(heights[i + ROW], heights[i + ROW + 1], tx), tz);
-}
+pressed = {}
+var lookLeftRight = 0
+var lookUpDown = 0;
+var me = { x:0, y:0, z:0, vy:0 }
+var allTrees = []
 
-/* ---------- scene ------- */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(innerWidth, innerHeight);
-document.body.insertBefore(renderer.domElement, document.body.firstChild);
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb)
+var cam = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
+cam.rotation.order = "YXZ" // i found this on a forum, without it looking up makes me turn sideways which was so annoying
 
-const scene = new THREE.Scene();
-const skyColor = new THREE.Color(0x8ecdf0);
-scene.background = skyColor;
-scene.fog = new THREE.Fog(0x8ecdf0, 60, 260);
-const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 800);
-camera.rotation.order = "YXZ";
+var rend = new THREE.WebGLRenderer();
+rend.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(rend.domElement)
 
-const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x6b5a45, 0.7);
-scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-scene.add(sun);
+var light = new THREE.DirectionalLight(0xffffff, 0.8);
+light.position.set(50, 100, 30);
+scene.add(light)
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-/* ---------- terrain mesh ------- */
-const geo = new THREE.BufferGeometry();
-const pos = new Float32Array(ROW * ROW * 3), col = new Float32Array(ROW * ROW * 3);
-for (let iz = 0; iz <= RES; iz++) for (let ix = 0; ix <= RES; ix++) {
-  const i = iz * ROW + ix;
-  pos[i * 3] = -HALF + ix * CELL; pos[i * 3 + 1] = heights[i]; pos[i * 3 + 2] = -HALF + iz * CELL;
-}
-const idx = [];
-for (let iz = 0; iz < RES; iz++) for (let ix = 0; ix < RES; ix++) {
-  const a = iz * ROW + ix, b = a + 1, c = a + ROW, d = c + 1;
-  idx.push(a, c, b, b, c, d);
-}
-geo.setIndex(idx);
-geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-geo.computeVertexNormals();
-scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true })));
-
-const water = new THREE.Mesh(
-  new THREE.PlaneGeometry(WORLD * 3, WORLD * 3).rotateX(-Math.PI / 2),
-  new THREE.MeshLambertMaterial({ color: 0x2b6fd6, transparent: true, opacity: 0.8 })
-);
-scene.add(water);
-
-/* ---------- colours: dead rock turns green where life has sprad -------- */
-const life = new Float32Array(ROW * ROW);
-const lifeTarget = new Float32Array(ROW * ROW);
-let landCells = 1, greenCells = 0;
-
-function updateColors() {
-  let land = 0, green = 0;
-  for (let i = 0; i < life.length; i++) {
-    const h = heights[i];
-    let r, g, b;
-    if (h < 0.5) { r = 0.8; g = 0.7; b = 0.5; }                 // sand / sea floor
-    else if (h < 14) { r = 0.65; g = 0.4; b = 0.3; }            // rusty rock
-    else { r = 0.5; g = 0.47; b = 0.46; }                       // grey peaks
-    const l = h > 0.5 ? life[i] : 0;
-    r = lerp(r, 0.25, l); g = lerp(g, 0.55, l); b = lerp(b, 0.25, l);
-    col[i * 3] = r; col[i * 3 + 1] = g; col[i * 3 + 2] = b;
-    if (h > 0.8) { land++; if (life[i] > 0.5) green++; }
-  }
-  geo.attributes.color.needsUpdate = true;
-  landCells = Math.max(1, land); greenCells = green;
+// the hills. honestly i dont understand terrain properly so i just did sin and cos
+// until it looked like something. sorry if its not okay. if its too smooth i can change the 0.1
+function getHeight(xx, zz){
+    var h = Math.sin(xx*0.1)*2 + Math.cos(zz*0.1)*2;
+    return h
 }
 
-function stamp(wx, wz, radius) {
-  const cx = (wx + HALF) / CELL, cz = (wz + HALF) / CELL, rc = radius / CELL;
-  for (let iz = Math.max(0, Math.floor(cz - rc)); iz <= Math.min(RES, Math.ceil(cz + rc)); iz++) {
-    for (let ix = Math.max(0, Math.floor(cx - rc)); ix <= Math.min(RES, Math.ceil(cx + rc)); ix++) {
-      const d = Math.hypot(ix - cx, iz - cz) / rc;
-      if (d >= 1) continue;
-      const i = iz * ROW + ix;
-      lifeTarget[i] = Math.max(lifeTarget[i], Math.min(1, (1 - d) * 2));
-    }
-  }
-}
-function lifeTick() {
-  lifeTarget.fill(0);
-  for (const t of trees) stamp(t.x, t.z, Math.min(3 + t.age * 0.4, 9));
-  for (const c of condensers) stamp(c.x, c.z, Math.min(5 + c.age * 0.6, 22));
-  for (let i = 0; i < life.length; i++) life[i] += (lifeTarget[i] - life[i]) * 0.3;
-}
+var groundGeo = new THREE.PlaneGeometry(size, size, steps, steps);
+groundGeo.rotateX(-Math.PI/2)
+var pos = groundGeo.attributes.position;
+var myColors = new Float32Array(pos.count*3)
+var greenArray = [];
 
-/* ---------- trees ------- */
-const trees = [];
-const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.3, 6).translate(0, 0.65, 0);
-const leafGeo = new THREE.ConeGeometry(1, 3, 8).translate(0, 2.8, 0);
-const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2b });
-const leafMat = new THREE.MeshLambertMaterial({ color: 0x3f7d2c });
+for(var i=0; i<pos.count; i++){
+   var px = pos.getX(i)
+    var pz = pos.getZ(i);
+   pos.setY(i, getHeight(px, pz))
 
-function addTree(x, z, age) {
-  const g = new THREE.Group();
-  g.add(new THREE.Mesh(trunkGeo, trunkMat), new THREE.Mesh(leafGeo, leafMat));
-  g.position.set(x, heightAt(x, z), z);
-  scene.add(g);
-  const t = { x, z, age, g };
-  trees.push(t);
-  return t;
-}
-function removeTree(t) {
-  scene.remove(t.g);
-  trees.splice(trees.indexOf(t), 1);
+  myColors[i*3] = 0.6
+    myColors[i * 3 + 1] = 0.4;
+   myColors[i*3+2] = 0.3
+   greenArray.push(0);
 }
 
-/* ------- rocks ---------- */
-const rocks = [];
-const rockGeo = new THREE.IcosahedronGeometry(1, 0);
-const rockMat = new THREE.MeshLambertMaterial({ color: 0x777070 });
-for (let tries = 0; rocks.length < 80 && tries < 2000; tries++) {
-  const x = (Math.random() * 2 - 1) * HALF * 0.8, z = (Math.random() * 2 - 1) * HALF * 0.8;
-  const h = heightAt(x, z);
-  if (h < 1 || h > 20) continue;
-  const mesh = new THREE.Mesh(rockGeo, rockMat);
-  const s = 0.6 + Math.random();
-  mesh.scale.set(s, s * 0.7, s);
-  mesh.position.set(x, h + 0.2, z);
-  scene.add(mesh);
-  rocks.push({ x, z, mesh });
+groundGeo.setAttribute("color", new THREE.BufferAttribute(myColors, 3));
+groundGeo.computeVertexNormals()
+
+var ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({vertexColors:true}));
+scene.add(ground);
+
+var trunkShape = new THREE.CylinderGeometry(0.3, 0.4, 2, 6);
+var trunkColor = new THREE.MeshLambertMaterial({color:0x6b4a2b});
+var leafShape = new THREE.ConeGeometry(1.5, 4, 8);
+var leafColor = new THREE.MeshLambertMaterial({color:0x2e7d32})
+
+function addTree(tx, tz){
+   var g = new THREE.Group();
+  var trunk = new THREE.Mesh(trunkShape, trunkColor);
+   trunk.position.y = 1
+   g.add(trunk);
+  var leafs = new THREE.Mesh(leafShape, leafColor)
+   leafs.position.y = 4;
+   g.add(leafs)
+   g.position.set(tx, getHeight(tx,tz), tz)
+   scene.add(g);
+   allTrees.push({x:tx, z:tz, mesh:g})
 }
 
-/* ---------- condeners --------- */
-const condensers = [];
-const concMat = new THREE.MeshLambertMaterial({ color: 0x8a8f99 });
-const orbMat = new THREE.MeshBasicMaterial({ color: 0x7fe3ff });
-function addCondenser(x, z) {
-  const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 2.5, 8), concMat);
-  base.position.y = 1.25;
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), orbMat);
-  orb.position.y = 3.1;
-  g.add(base, orb);
-  g.position.set(x, heightAt(x, z), z);
-  scene.add(g);
-  condensers.push({ x, z, age: 0, g });
+for(var k=0;k<10;k++){
+   var sx = (Math.random()-0.5)*80
+   var sz = (Math.random()-0.5)*80
+    if(Math.abs(sx)<5 && Math.abs(sz)<5){
+      sx = sx + 10
+      sz = sz + 10;
+   }
+  addTree(sx, sz)
 }
 
-/* ---------- weather ------- */
-const WEATHER = {
-  clear:  { name: "Clear",  clouds: 0.0, rain: 0.0, dark: 0.0 },
-  cloudy: { name: "Cloudy", clouds: 0.6, rain: 0.0, dark: 0.3 },
-  rain:   { name: "Rain",   clouds: 1.0, rain: 1.0, dark: 0.5 }
-};
-const weather = { type: "clear", timer: 40, clouds: 0, rain: 0, dark: 0, told: false };
-let lifePct = 0;
+me.x = 0;
+me.z = 0;
+me.y = getHeight(0,0);
 
-const clouds = [];
-const cloudGeo = new THREE.SphereGeometry(1, 8, 6);
-const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false });
-for (let i = 0; i < 12; i++) {
-  const g = new THREE.Group();
-  const puffs = 3 + Math.floor(Math.random() * 3);
-  for (let k = 0; k < puffs; k++) {
-    const m = new THREE.Mesh(cloudGeo, cloudMat);
-    m.position.set((k - puffs / 2) * 6, Math.random() * 2, (Math.random() - 0.5) * 6);
-    m.scale.set(7 + Math.random() * 4, 2.5 + Math.random() * 2, 5 + Math.random() * 3);
-    g.add(m);
-  }
-  g.position.set((Math.random() - 0.5) * 360, 70 + Math.random() * 20, (Math.random() - 0.5) * 360);
-  g.userData.speed = 2 + Math.random() * 3;
-  scene.add(g);
-  clouds.push(g);
+function showMsg(msg){
+  document.getElementById("message").innerHTML = msg;
+  document.getElementById("message").style.display = "block";
+  setTimeout(function(){
+    document.getElementById("message").style.display = "none";
+  }, 2000)
 }
 
-// rain is a bunch of short lines that follow the camera around
-const RAIN_COUNT = 800;
-const rainPos = new Float32Array(RAIN_COUNT * 6);
-const rainOffsets = new Float32Array(RAIN_COUNT * 3);
-for (let i = 0; i < RAIN_COUNT; i++) {
-  rainOffsets[i * 3] = (Math.random() - 0.5) * 60;
-  rainOffsets[i * 3 + 1] = Math.random() * 30 - 5;
-  rainOffsets[i * 3 + 2] = (Math.random() - 0.5) * 60;
-}
-const rainGeo = new THREE.BufferGeometry();
-rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3));
-const rainLines = new THREE.LineSegments(
-  rainGeo,
-  new THREE.LineBasicMaterial({ color: 0xaec6e8, transparent: true, opacity: 0.5 })
-);
-rainLines.frustumCulled = false;
-rainLines.visible = false;
-scene.add(rainLines);
-
-function pickWeather() {
-  // the greener the planet, the more often it rains
-  const r = Math.random();
-  if (r < 0.1 + 0.4 * lifePct) return "rain";
-  return r < 0.55 ? "cloudy" : "clear";
+function doChop(){
+ var found = -1;
+ var bestDist = 5;
+ for(var i=0;i<allTrees.length;i++){
+     var dx = allTrees[i].x - me.x;
+     var dz = allTrees[i].z - me.z;
+     var d = Math.sqrt(dx*dx+dz*dz)
+     if(d < bestDist){
+       bestDist = d;
+        found = i;
+     }
+ }
+ if(found == -1){
+    showMsg("No tree close enough");
+    return
+ }
+ scene.remove(allTrees[found].mesh);
+  allTrees.splice(found, 1)
+   wood = wood + 1;
 }
 
-function updateWeather(dt) {
-  weather.timer -= dt;
-  if (weather.timer <= 0) {
-    weather.type = pickWeather();
-    weather.timer = 40 + Math.random() * 40;
-    if (weather.type === "rain" && !weather.told) {
-      weather.told = true;
-      message("Rain makes your trees grow faster");
-    }
-  }
-
-  // ease towards the target values so changes are gradual
-  const w = WEATHER[weather.type], s = Math.min(1, dt * 0.5);
-  weather.clouds += (w.clouds - weather.clouds) * s;
-  weather.rain += (w.rain - weather.rain) * s;
-  weather.dark += (w.dark - weather.dark) * s;
-
-  const shown = Math.min(clouds.length, 3 + Math.round(9 * weather.clouds));
-  clouds.forEach((c, i) => {
-    c.visible = i < shown;
-    c.position.x += c.userData.speed * dt;
-    if (c.position.x > 200) c.position.x = -200;
-  });
-
-  const raining = weather.rain > 0.05;
-  rainLines.visible = raining;
-  if (raining) {
-    const n = Math.floor(RAIN_COUNT * weather.rain), cp = camera.position;
-    for (let i = 0; i < n; i++) {
-      rainOffsets[i * 3 + 1] -= 35 * dt;
-      if (rainOffsets[i * 3 + 1] < -5) rainOffsets[i * 3 + 1] += 30;
-      const x = cp.x + rainOffsets[i * 3];
-      const y = cp.y + rainOffsets[i * 3 + 1];
-      const z = cp.z + rainOffsets[i * 3 + 2];
-      rainPos.set([x, y, z, x + 0.05, y + 0.8, z + 0.03], i * 6);
-    }
-    rainGeo.setDrawRange(0, n * 2);
-    rainGeo.attributes.position.needsUpdate = true;
-  }
-  $("weather").textContent = w.name;
-}
-
-/* ---------- animals ------- */
-const animals = [];
-const MAX_ANIMALS = 25;
-let animalTimer = 0;
-const bodyGeo = new THREE.BoxGeometry(0.7, 0.6, 1.3);
-const headGeo = new THREE.BoxGeometry(0.3, 0.3, 0.5);
-const legGeo = new THREE.BoxGeometry(0.14, 0.7, 0.14);
-
-function lifeAt(x, z) {
-  const ix = clamp(Math.round((x + HALF) / CELL), 0, RES);
-  const iz = clamp(Math.round((z + HALF) / CELL), 0, RES);
-  return life[iz * ROW + ix];
-}
-
-function makeAnimal(x, z) {
-  const mat = new THREE.MeshLambertMaterial({
-    color: new THREE.Color().setHSL(0.07 + Math.random() * 0.05, 0.4, 0.3 + Math.random() * 0.15)
-  });
-  const g = new THREE.Group();
-  const part = (geometry, px, py, pz) => {
-    const m = new THREE.Mesh(geometry, mat);
-    m.position.set(px, py, pz);
-    g.add(m);
-    return m;
-  };
-  part(bodyGeo, 0, 0.95, 0);
-  part(headGeo, 0, 1.45, 0.8);
-  const legs = [
-    part(legGeo, -0.25, 0.35, -0.5), part(legGeo, 0.25, 0.35, -0.5),
-    part(legGeo, -0.25, 0.35, 0.5), part(legGeo, 0.25, 0.35, 0.5)
-  ];
-  g.position.set(x, heightAt(x, z), z);
-  scene.add(g);
-  animals.push({ g, legs, x, z, heading: Math.random() * 6.28, turnIn: 2, phase: Math.random() * 6 });
-}
-
-function spawnAnimal() {
-  // try a few random spots around the playe until one is green, dry and flat enough
-  for (let tries = 0; tries < 10; tries++) {
-    const a = Math.random() * 6.28, d = 15 + Math.random() * 40;
-    const x = P.x + Math.cos(a) * d, z = P.z + Math.sin(a) * d;
-    if (Math.abs(x) > HALF - 5 || Math.abs(z) > HALF - 5) continue;
-    if (heightAt(x, z) < 1.2 || lifeAt(x, z) < 0.6) continue;
-    makeAnimal(x, z);
+// this part broke for like two hours because i forgot to set needsUpdate and
+// nothing changed color and i thought three js was broken but it was just me
+function doPlant(){
+  if(wood < 1){
+    showMsg("You have no wood! Press E next to a tree");
     return;
   }
+   var nx = me.x - Math.sin(lookLeftRight) * 4;
+   var nz = me.z - Math.cos(lookLeftRight)*4;
+   if(Math.abs(nx)>48 || Math.abs(nz)>48){
+      showMsg("That is too far out")
+      return
+   }
+   addTree(nx, nz);
+   wood = wood - 1
+   plantedTrees++;
+   for(var i=0;i<pos.count;i++){
+      var dx = pos.getX(i) - nx;
+      var dz = pos.getZ(i) - nz
+      var d = Math.sqrt(dx*dx + dz*dz)
+      if(d < greenRadius){
+        greenArray[i] = 1;
+      }
+   }
+   var howMany = 0;
+   for(var i=0;i<pos.count;i++){
+     if(greenArray[i]==1){
+        myColors[i*3] = 0.2;
+        myColors[i*3+1] = 0.6;
+        myColors[i*3+2] = 0.2;
+       howMany = howMany + 1;
+      }
+   }
+   groundGeo.attributes.color.needsUpdate = true
+  percentGreen = Math.floor(howMany/pos.count*100)
+   if(percentGreen >= 50){
+     youWin()
+   }
 }
 
-function updateAnimals(dt, time) {
-  animalTimer -= dt;
-  const cap = Math.min(MAX_ANIMALS, Math.floor(lifePct * 40));
-  if (animalTimer <= 0) {
-    animalTimer = 3;
-    if (animals.length < cap) spawnAnimal();
+function youWin(){
+   didWin = true;
+   arePlaying = false;
+   var str = "You did it! Your time: " + timeToString(timegone);
+   if(best == 0 || timegone < best){
+      best = timegone;
+      str = str + " (new best time!)";
+      localStorage.setItem("terraBest", best)
+   }else{
+      str = str + " (best: " + timeToString(best) + ")"
+   }
+  document.getElementById("menuText").innerHTML = str
+   document.getElementById("playButton").innerHTML = "Play again";
+   document.exitPointerLock()
+}
+
+function timeToString(sec){
+   var mins = Math.floor(sec/60);
+  var secs = Math.floor(sec % 60);
+   var cents = Math.floor(sec*100 % 100);
+   if(secs < 10){ secs = "0" + secs; }
+   if(cents < 10){ cents = "0" + cents; }
+  return mins + ":" + secs + "." + cents;
+}
+
+function updateHUD(){
+   document.getElementById("wood").innerHTML = wood;
+   document.getElementById("planted").innerHTML = plantedTrees;
+   document.getElementById("percent").innerHTML = percentGreen
+   document.getElementById("time").innerHTML = timeToString(timegone);
+   if(best>0){
+     document.getElementById("best").innerHTML = timeToString(best);
+   }
+}
+
+// jumping was the hardest thing, i had to look at a physics video to get why
+// the gravity has to be multiplied by delta
+function move(delta){
+  var spd = 8;
+   if(pressed["ShiftLeft"]==true){
+     spd = 14;
+   }
+  var fwd = 0;
+  var right = 0
+   if(pressed["KeyW"]){ fwd = fwd + 1 }
+   if(pressed["KeyS"]){ fwd = fwd - 1 }
+   if(pressed["KeyD"]){ right = right + 1 }
+  if(pressed["KeyA"]){ right = right - 1 }
+  me.x = me.x + (-Math.sin(lookLeftRight) * fwd + Math.cos(lookLeftRight) * right) * spd * delta;
+  me.z = me.z + (-Math.cos(lookLeftRight) * fwd - Math.sin(lookLeftRight)*right) * spd*delta;
+   if(me.x > 48){ me.x = 48 }
+  if(me.x < -48){ me.x = -48; }
+   if(me.z > 48){ me.z = 48 }
+   if(me.z < -48){me.z = -48}
+   var gy = getHeight(me.x, me.z)
+   var grounded = me.y <= gy + 0.01;
+   if(pressed["Space"] && grounded){
+      me.vy = 9
+   }
+   me.vy = me.vy - 25*delta
+   me.y = me.y + me.vy * delta;
+   if(me.y < gy){
+     me.y = gy;
+      me.vy = 0;
+   }
+}
+
+document.addEventListener("keydown", function(e){
+   pressed[e.code] = true;
+   if(arePlaying==true && e.code=="KeyE"){
+      doChop()
+   }
+})
+
+document.addEventListener("keyup", function(e){
+   pressed[e.code] = false
+})
+
+document.addEventListener("mousedown", function(e){
+   if(arePlaying && e.button==0){
+      doPlant();
+   }
+})
+
+document.addEventListener("mousemove", function(e){
+   if(arePlaying){
+      lookLeftRight = lookLeftRight - e.movementX*0.002;
+      lookUpDown = lookUpDown - e.movementY * 0.002
+      if(lookUpDown > 1.5){ lookUpDown = 1.5 }
+      if(lookUpDown < -1.5){ lookUpDown = -1.5; }
+   }
+})
+
+window.addEventListener("resize", function(){
+   cam.aspect = window.innerWidth/window.innerHeight
+  cam.updateProjectionMatrix();
+   rend.setSize(window.innerWidth, window.innerHeight);
+})
+
+function pressPlay(){
+   if(didWin==true){
+      location.reload() // easier than resetting everything, i will fix this later
+   }else{
+     rend.domElement.requestPointerLock()
+   }
+}
+
+document.addEventListener("pointerlockchange", function(){
+   if(document.pointerLockElement == rend.domElement){
+      arePlaying = true
+      document.getElementById("menu").style.display = "none";
+     document.getElementById("info").style.display = "block";
+     document.getElementById("cross").style.display = "block";
+   }else{
+     arePlaying = false;
+      document.getElementById("menu").style.display = "block";
+      document.getElementById("info").style.display = "none";
+      document.getElementById("cross").style.display = "none";
+      if(didWin==true){
+        document.getElementById("playButton").innerHTML = "Play again";
+      }else{
+        document.getElementById("playButton").innerHTML = "Continue";
+      }
+   }
+})
+
+var savedBest = localStorage.getItem("terraBest")
+if(savedBest){
+   best = parseInt(savedBest);
+}
+
+var prevTime = Date.now();
+
+function loop(){
+  requestAnimationFrame(loop)
+  var t = Date.now()
+  var delta = (t - prevTime)/1000;
+   prevTime = t;
+   if(delta > 0.1){
+     delta = 0.1;
+   }
+  if(arePlaying){
+    timegone = timegone + delta
+     move(delta)
+     updateHUD()
   }
-  for (let i = animals.length - 1; i >= 0; i--) {
-    const an = animals[i];
-    // animals disappear if their grass dies or they wander too far away
-    if (lifeAt(an.x, an.z) < 0.25 || Math.hypot(an.x - P.x, an.z - P.z) > 120) {
-      scene.remove(an.g);
-      animals.splice(i, 1);
-      continue;
-    }
-    an.turnIn -= dt;
-    if (an.turnIn <= 0) {
-      an.heading += (Math.random() - 0.5) * 2.4;
-      an.turnIn = 2 + Math.random() * 4;
-    }
-    const nx = an.x + Math.sin(an.heading) * 0.9 * dt;
-    const nz = an.z + Math.cos(an.heading) * 0.9 * dt;
-    if (heightAt(nx, nz) > 1 && lifeAt(nx, nz) > 0.3) { an.x = nx; an.z = nz; }
-    else an.heading += 2.2;                                // turn around at the edge of the grass
-    an.g.position.set(an.x, heightAt(an.x, an.z), an.z);
-    an.g.rotation.y = an.heading;
-    const swing = Math.sin(time * 5 + an.phase) * 0.45;    // walking animation
-    an.legs[0].rotation.x = swing; an.legs[3].rotation.x = swing;
-    an.legs[1].rotation.x = -swing; an.legs[2].rotation.x = -swing;
-  }
-  $("animals").textContent = animals.length;
+   cam.position.set(me.x, me.y + 1.7, me.z);
+   cam.rotation.y = lookLeftRight
+  cam.rotation.x = lookUpDown
+  rend.render(scene, cam)
 }
-
-/* ------- player ---------- */
-const P = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: 0, onGround: true };
-(function spawn() {
-  for (let r = 0; r < 80; r += 2) for (let a = 0; a < 6.28; a += 0.4) {
-    const x = Math.cos(a) * r, z = Math.sin(a) * r, h = heightAt(x, z);
-    if (h > 2 && h < 9) { P.x = x; P.z = z; P.y = h; return; }
-  }
-})();
-// a few starter trees near the player so there is something to chop
-for (let n = 0, tries = 0; n < 8 && tries < 100; tries++) {
-  const a = Math.random() * 6.28, r = 5 + Math.random() * 10;
-  const x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
-  if (heightAt(x, z) > 1) { addTree(x, z, 20); n++; }
-}
-
-/* ---------- tools -------- */
-const TOOLS = ["Gather", "Plant", "Dig", "Raise", "Condenser"];
-const HINTS = [
-  "Walk up to a tree or rock and click to gather",
-  "Plant a tree (1 wood)",
-  "Dig to lower the land and collect dirt",
-  "Raise the land (1 dirt)",
-  "Build a condenser (5 stone, 2 wood)"
-];
-const inv = { wood: 6, stone: 0, dirt: 0 };
-let tool = 0, cooldown = 0, mouseDown = false, locked = false;
-const keys = {};
-
-TOOLS.forEach((name, i) => {
-  const d = document.createElement("div");
-  d.className = "tool"; d.textContent = (i + 1) + " " + name;
-  $("tools").appendChild(d);
-});
-function setTool(i) {
-  tool = i;
-  [...$("tools").children].forEach((c, k) => c.classList.toggle("on", k === i));
-  message(HINTS[i]);
-}
-let msgTimer = 0;
-function message(text) {
-  const el = $("msg");
-  el.textContent = text; el.classList.add("show");
-  clearTimeout(msgTimer);
-  msgTimer = setTimeout(() => el.classList.remove("show"), 2000);
-}
-
-/* find the ground point under the crossir */
-const dir = new THREE.Vector3();
-function terrainHit(maxDist) {
-  camera.getWorldDirection(dir);
-  const o = camera.position;
-  for (let d = 0.5; d <= maxDist; d += 0.5) {
-    const x = o.x + dir.x * d, y = o.y + dir.y * d, z = o.z + dir.z * d;
-    if (Math.abs(x) > HALF || Math.abs(z) > HALF) return null;
-    if (y < heightAt(x, z)) return { x, z, y: heightAt(x, z) };
-  }
-  return null;
-}
-
-/* nearest tree or rock in front of the player */
-function findTarget() {
-  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
-  let best = null, bestDist = 5;
-  const check = (list, kind) => {
-    for (const o of list) {
-      const dx = o.x - P.x, dz = o.z - P.z, d = Math.hypot(dx, dz);
-      if (d < bestDist && d > 0.01 && (dx * fx + dz * fz) / d > 0.5) { bestDist = d; best = { kind, o }; }
-    }
-  };
-  check(trees, "tree"); check(rocks, "rock");
-  return best;
-}
-
-/* raise or lower the terrain with a soft rond brush */
-function brush(cx, cz, radius, amount) {
-  for (let iz = 0; iz <= RES; iz++) for (let ix = 0; ix <= RES; ix++) {
-    const x = -HALF + ix * CELL, z = -HALF + iz * CELL, d = Math.hypot(x - cx, z - cz);
-    if (d > radius) continue;
-    const i = iz * ROW + ix;
-    heights[i] = clamp(heights[i] + amount * (0.5 + 0.5 * Math.cos(Math.PI * d / radius)), -8, 30);
-    pos[i * 3 + 1] = heights[i];
-  }
-  geo.attributes.position.needsUpdate = true;
-  geo.computeVertexNormals();
-  trees.forEach(t => { t.g.position.y = heightAt(t.x, t.z); });
-  rocks.forEach(r => { r.mesh.position.y = heightAt(r.x, r.z) + 0.2; });
-  condensers.forEach(c => { c.g.position.y = heightAt(c.x, c.z); });
-  for (let i = trees.length - 1; i >= 0; i--) if (heightAt(trees[i].x, trees[i].z) < 0) removeTree(trees[i]);
-}
-
-let clicked = false;
-function useTool(dt) {
-  cooldown -= dt;
-  if (!mouseDown || cooldown > 0) return;
-  cooldown = 0.25;
-
-  if (tool === 0) {
-    const t = findTarget();
-    if (!t) return;
-    if (t.kind === "tree") { removeTree(t.o); inv.wood += 2; message("+2 wood"); }
-    else { scene.remove(t.o.mesh); rocks.splice(rocks.indexOf(t.o), 1); inv.stone += 2; message("+2 stone"); }
-    return;
-  }
-
-  const hit = terrainHit(16);
-  if (!hit) return;
-
-  if (tool === 1) {
-    if (inv.wood < 1) return message("You need 1 wood");
-    if (hit.y < 0.8) return message("Trees need dry land");
-    if (trees.some(t => Math.hypot(t.x - hit.x, t.z - hit.z) < 1.2)) return message("Too close to another tree");
-    addTree(hit.x, hit.z, 0); inv.wood--;
-  } else if (tool === 2) {
-    brush(hit.x, hit.z, 4, -0.5); inv.dirt++;
-  } else if (tool === 3) {
-    if (inv.dirt < 1) return message("Dig first to get dirt");
-    brush(hit.x, hit.z, 4, 0.5); inv.dirt--;
-  } else if (tool === 4) {
-    if (!clicked) { cooldown = 0; return; }   // one condenser per click
-    if (inv.stone < 5 || inv.wood < 2) return message("Needs 5 stone and 2 wood");
-    if (hit.y < 0.8) return message("Build on dry land");
-    addCondenser(hit.x, hit.z); inv.stone -= 5; inv.wood -= 2;
-    message("Condenser built!");
-  }
-}
-
-/* ---------- player movement ------ */
-function updatePlayer(dt) {
-  const speed = keys.ShiftLeft ? 10 : 6;
-  const mx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-  const mz = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
-  const len = Math.hypot(mx, mz) || 1;
-  const sn = Math.sin(P.yaw), cs = Math.cos(P.yaw);
-  P.x += (-sn * mz + cs * mx) / len * speed * dt;
-  P.z += (-cs * mz - sn * mx) / len * speed * dt;
-  const rad = Math.hypot(P.x, P.z), lim = HALF - 3;
-  if (rad > lim) { P.x *= lim / rad; P.z *= lim / rad; }
-
-  const ground = heightAt(P.x, P.z);
-  P.vy -= 24 * dt;
-  if (keys.Space && P.onGround) { P.vy = 8; P.onGround = false; }
-  P.y += P.vy * dt;
-  if (P.y <= ground) { P.y = ground; P.vy = 0; P.onGround = true; } else P.onGround = false;
-
-  camera.position.set(P.x, P.y + 1.7, P.z);
-  camera.rotation.set(P.pitch, P.yaw, 0);
-}
-
-/* ---------- day  night -------- */
-let dayT = 0.1;
-const dayCol = new THREE.Color(0x8ecdf0), nightCol = new THREE.Color(0x070b1c);
-function updateDay(dt) {
-  dayT = (dayT + dt / 240) % 1;
-  const a = dayT * Math.PI * 2;
-  const height = Math.sin(a);                      // sun height: > 0 is day
-  const day = clamp(height * 3 + 0.5, 0, 1);
-  skyColor.copy(nightCol).lerp(dayCol, day).multiplyScalar(1 - weather.dark);
-  scene.fog.color.copy(skyColor);
-  sun.position.set(Math.cos(a) * 100, Math.sin(a) * 100 + 5, 30).add(camera.position);
-  sun.intensity = 0.9 * day * (1 - weather.dark);
-  hemi.intensity = 0.2 + 0.5 * day;
-}
-
-/* ---------- minimap ------ */
-const mini = $("mini"), mctx = mini.getContext("2d");
-const miniTerrain = document.createElement("canvas");
-miniTerrain.width = miniTerrain.height = ROW;
-const mtctx = miniTerrain.getContext("2d");
-const miniImg = mtctx.createImageData(ROW, ROW);
-
-function updateMinimapTerrain() {                       // redraw the land colours (called a few times per second)
-  for (let i = 0; i < ROW * ROW; i++) {
-    const water = heights[i] < 0.5;
-    miniImg.data[i * 4]     = water ? 43  : col[i * 3] * 255;
-    miniImg.data[i * 4 + 1] = water ? 111 : col[i * 3 + 1] * 255;
-    miniImg.data[i * 4 + 2] = water ? 214 : col[i * 3 + 2] * 255;
-    miniImg.data[i * 4 + 3] = 255;
-  }
-  mtctx.putImageData(miniImg, 0, 0);
-}
-
-function drawMinimap() {                                // terrain + player dot with a view direction
-  const w = mini.width, h = mini.height;
-  mctx.drawImage(miniTerrain, 0, 0, w, h);
-  const px = (P.x + HALF) / WORLD * w, pz = (P.z + HALF) / WORLD * h;
-  mctx.strokeStyle = "#fff";
-  mctx.lineWidth = 2;
-  mctx.beginPath();
-  mctx.moveTo(px, pz);
-  mctx.lineTo(px - Math.sin(P.yaw) * 10, pz - Math.cos(P.yaw) * 10);
-  mctx.stroke();
-  mctx.fillStyle = "#ff4d4d";
-  mctx.beginPath();
-  mctx.arc(px, pz, 3.5, 0, Math.PI * 2);
-  mctx.fill();
-}
-
-/* ---------- HUD ------- */
-let won = false, playTime = 0, bestTime = null;
-try { bestTime = parseFloat(localStorage.getItem("terraBest")) || null; } catch (e) {}
-function fmt(t) {                                       // seconds -> m:ss.cc
-  const m = Math.floor(t / 60), s = Math.floor(t % 60), c = Math.floor((t * 100) % 100);
-  return m + ":" + (s < 10 ? "0" : "") + s + "." + (c < 10 ? "0" : "") + c;
-}
-function updateHud() {
-  $("time").textContent = fmt(playTime);
-  $("best").textContent = bestTime ? fmt(bestTime) : "--";
-  $("rWood").textContent = inv.wood;
-  $("rStone").textContent = inv.stone;
-  $("rDirt").textContent = inv.dirt;
-  $("trees").textContent = trees.length;
-  const pct = clamp(greenCells / landCells / 0.5, 0, 1);
-  lifePct = pct;
-  $("pct").textContent = Math.round(pct * 100) + "%";
-  $("barFill").style.width = pct * 100 + "%";
-  if (pct >= 1 && !won) {
-    won = true;
-    let msg = "Planet terraformed in " + fmt(playTime) + "!";
-    if (!bestTime || playTime < bestTime) {
-      bestTime = playTime;
-      msg += "\nNew best time!";
-      try { localStorage.setItem("terraBest", bestTime); } catch (e) {}
-    } else msg += "\nBest time: " + fmt(bestTime);
-    $("best").textContent = fmt(bestTime);
-    document.exitPointerLock();
-    alert(msg);
-  }
-}
-
-/* ------ input --------- */
-addEventListener("keydown", e => {
-  keys[e.code] = true;
-  if (!locked) return;
-  if (e.code.startsWith("Digit")) {
-    const n = +e.code.slice(5);
-    if (n >= 1 && n <= TOOLS.length) setTool(n - 1);
-  }
-});
-addEventListener("keyup", e => { keys[e.code] = false; });
-addEventListener("mousedown", e => { if (locked && e.button === 0) { mouseDown = true; clicked = true; } });
-addEventListener("mouseup", () => { mouseDown = false; });
-addEventListener("mousemove", e => {
-  if (!locked) return;
-  P.yaw -= e.movementX * 0.0022;
-  P.pitch = clamp(P.pitch - e.movementY * 0.0022, -1.5, 1.5);
-});
-addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-$("play").addEventListener("click", () => renderer.domElement.requestPointerLock());
-document.addEventListener("pointerlockchange", () => {
-  locked = document.pointerLockElement === renderer.domElement;
-  $("menu").style.display = locked ? "none" : "flex";
-  $("hud").style.display = locked ? "block" : "none";
-  $("play").textContent = "Click to resume";
-  if (!locked) mouseDown = false;
-});
-
-/* ---------- main loop ---------- */
-setTool(0);
-let colorTimer = 99, last = performance.now(), orbit = 0;
-function frame(now) {
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - last) / 1000);
-  last = now;
-
-  trees.forEach(t => {                                  // trees grow over time
-    t.age += dt * (1 + weather.rain * 0.8);              // rain spees up growth
-    const s = Math.min(1, 0.15 + t.age / 20);
-    t.g.scale.set(s, s, s);
-  });
-  condensers.forEach(c => { c.age += dt; });
-
-  if (locked) {
-    if (!won) playTime += dt;
-    updatePlayer(dt);
-    useTool(dt);
-    clicked = false;
-    updateHud();
-    drawMinimap();
-  } else {                                              // slow orbit behind the menu
-    orbit += dt * 0.05;
-    camera.position.set(Math.cos(orbit) * 140, 60, Math.sin(orbit) * 140);
-    camera.lookAt(0, 0, 0);
-  }
-
-  colorTimer += dt;
-  if (colorTimer > 0.4) { colorTimer = 0; lifeTick(); updateColors(); updateMinimapTerrain(); }
-
-  updateWeather(dt);
-  updateAnimals(dt, now / 1000);
-  updateDay(dt);
-  renderer.render(scene, camera);
-}
-lifeTick(); updateColors(); updateMinimapTerrain();
-requestAnimationFrame(frame);
-})();
+//thats it! (found out i cant put this message this all the way down haha)
+loop()
 </script>
 </body>
 </html>
-
